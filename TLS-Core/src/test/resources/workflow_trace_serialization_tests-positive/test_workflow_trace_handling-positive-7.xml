@@ -1,0 +1,53 @@
+This test illustrates that connection aliases are removed from actions
+if there is only one connection defined in the workflow trace. This is
+true for default and custom connections.
+
+# Given this config:
+<config>
+</config>
+
+# And this input trace
+<workflowTrace>
+    <OutboundConnection>
+        <alias>custom</alias>
+        <timeout>44</timeout>
+    </OutboundConnection>
+    <Send>
+        <configuredMessages>
+            <ClientHello/>
+        </configuredMessages>
+    </Send>
+</workflowTrace>
+
+# We expect this normalized trace
+<workflowTrace>
+    <OutboundConnection>
+        <alias>custom</alias>
+        <ip>localhost</ip>
+        <port>443</port>
+        <hostname>localhost</hostname>
+        <timeout>44</timeout>
+        <connectionTimeout>8000</connectionTimeout>
+        <transportHandlerType>TCP</transportHandlerType>
+        <useIpv6>false</useIpv6>
+    </OutboundConnection>
+    <Send>
+        <connectionAlias>custom</connectionAlias>
+        <configuredMessages>
+            <ClientHello/>
+        </configuredMessages>
+    </Send>
+</workflowTrace>
+
+# And this after default filter application:
+<workflowTrace>
+    <OutboundConnection>
+        <alias>custom</alias>
+        <timeout>44</timeout>
+    </OutboundConnection>
+    <Send>
+        <configuredMessages>
+            <ClientHello/>
+        </configuredMessages>
+    </Send>
+</workflowTrace>

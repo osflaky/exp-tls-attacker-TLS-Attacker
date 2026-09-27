@@ -1,0 +1,224 @@
+/*
+ * TLS-Attacker - A Modular Penetration Testing Framework for TLS
+ *
+ * Copyright 2014-2023 Ruhr University Bochum, Paderborn University, Technology Innovation Institute, and Hackmanit GmbH
+ *
+ * Licensed under Apache License, Version 2.0
+ * http://www.apache.org/licenses/LICENSE-2.0.txt
+ */
+package de.rub.nds.tlsattacker.core.workflow.action;
+
+import de.rub.nds.modifiablevariable.HoldsModifiableVariable;
+import de.rub.nds.tlsattacker.core.layer.LayerConfiguration;
+import de.rub.nds.tlsattacker.core.layer.ReceiveTillLayerConfiguration;
+import de.rub.nds.tlsattacker.core.layer.constant.ImplementedLayers;
+import de.rub.nds.tlsattacker.core.layer.context.TlsContext;
+import de.rub.nds.tlsattacker.core.quic.frame.QuicFrame;
+import de.rub.nds.tlsattacker.core.quic.packet.QuicPacket;
+import de.rub.nds.tlsattacker.core.state.State;
+import de.rub.nds.tlsattacker.core.workflow.action.executor.ActionOption;
+import de.rub.nds.tlsattacker.core.workflow.container.ActionHelperUtil;
+import jakarta.xml.bind.annotation.XmlElementRef;
+import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.XmlRootElement;
+import java.util.*;
+
+@XmlRootElement
+public class ReceiveQuicTillAction extends CommonReceiveAction {
+
+    @HoldsModifiableVariable @XmlElementWrapper @XmlElementRef
+    protected List<QuicFrame> expectedQuicFrames = null;
+
+    @HoldsModifiableVariable @XmlElementWrapper @XmlElementRef
+    protected List<QuicPacket> expectedQuicPackets = null;
+
+    public ReceiveQuicTillAction() {
+        super();
+    }
+
+    public ReceiveQuicTillAction(QuicFrame... expectedQuicFrames) {
+        super();
+        this.expectedQuicFrames = new ArrayList<>(Arrays.asList(expectedQuicFrames));
+    }
+
+    public ReceiveQuicTillAction(QuicPacket... expectedQuicPackets) {
+        super();
+        this.expectedQuicPackets = new ArrayList<>(Arrays.asList(expectedQuicPackets));
+    }
+
+    public ReceiveQuicTillAction(ActionOption actionOption, QuicFrame... expectedQuicFrames) {
+        super(Set.of(actionOption));
+        this.expectedQuicFrames = new ArrayList<>(Arrays.asList(expectedQuicFrames));
+    }
+
+    public ReceiveQuicTillAction(ActionOption actionOption, QuicPacket... expectedQuicPackets) {
+        super(Set.of(actionOption));
+        this.expectedQuicPackets = new ArrayList<>(Arrays.asList(expectedQuicPackets));
+    }
+
+    public ReceiveQuicTillAction(
+            ActionOption actionOption,
+            List<QuicFrame> expectedQuicFrames,
+            List<QuicPacket> expectedQuicPackets) {
+        super(Set.of(actionOption));
+        this.expectedQuicFrames = expectedQuicFrames;
+        this.expectedQuicPackets = expectedQuicPackets;
+    }
+
+    public ReceiveQuicTillAction(
+            Set<ActionOption> actionOptions,
+            List<QuicFrame> expectedQuicFrames,
+            List<QuicPacket> expectedQuicPackets) {
+        super(actionOptions);
+        this.expectedQuicFrames = expectedQuicFrames;
+        this.expectedQuicPackets = expectedQuicPackets;
+    }
+
+    public List<QuicFrame> getExpectedQuicFrames() {
+        return expectedQuicFrames;
+    }
+
+    public void setExpectedQuicFrames(List<QuicFrame> expectedQuicFrames) {
+        this.expectedQuicFrames = expectedQuicFrames;
+    }
+
+    public List<QuicPacket> getExpectedQuicPackets() {
+        return expectedQuicPackets;
+    }
+
+    public void setExpectedQuicPackets(List<QuicPacket> expectedQuicPackets) {
+        this.expectedQuicPackets = expectedQuicPackets;
+    }
+
+    @Override
+    protected List<LayerConfiguration<?>> createLayerConfiguration(State state) {
+        TlsContext tlsContext = state.getTlsContext(getConnectionAlias());
+        List<LayerConfiguration<?>> configurationList = new LinkedList<>();
+        if (expectedQuicFrames != null) {
+            configurationList.add(
+                    new ReceiveTillLayerConfiguration<>(
+                            ImplementedLayers.QUICFRAME, true, expectedQuicFrames));
+        }
+        if (expectedQuicPackets != null) {
+            configurationList.add(
+                    new ReceiveTillLayerConfiguration<>(
+                            ImplementedLayers.QUICPACKET, expectedQuicPackets));
+        }
+        return ActionHelperUtil.sortAndAddOptions(
+                tlsContext.getLayerStack(), false, getActionOptions(), configurationList);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("Quic Receive Until:\n");
+
+        sb.append("\tExpected: ");
+        if ((expectedQuicPackets != null)) {
+            sb.append("Packets: ");
+            for (QuicPacket packet : expectedQuicPackets) {
+                sb.append(packet.toCompactString());
+                sb.append(", ");
+            }
+        }
+        if (expectedQuicFrames != null) {
+            sb.append("Frames: ");
+            for (QuicFrame frame : expectedQuicFrames) {
+                sb.append(frame.toCompactString());
+                sb.append(", ");
+            }
+        }
+        if (expectedQuicPackets == null && expectedQuicFrames == null) {
+            sb.append(" (no frames or packets set)");
+        }
+        sb.append("\n\tActual:");
+        if (expectedQuicPackets != null && !expectedQuicPackets.isEmpty()) {
+            if ((getReceivedQuicPackets() != null) && (!getReceivedQuicPackets().isEmpty())) {
+                for (QuicPacket packet : getReceivedQuicPackets()) {
+                    sb.append(packet.toCompactString());
+                    sb.append(", ");
+                }
+            } else {
+                sb.append(" (no packets received)");
+            }
+        }
+        if (expectedQuicFrames != null && !expectedQuicFrames.isEmpty()) {
+            if ((getExpectedQuicFrames() != null) && (!getExpectedQuicFrames().isEmpty())) {
+                for (QuicFrame frames : getExpectedQuicFrames()) {
+                    sb.append(frames.toCompactString());
+                    sb.append(", ");
+                }
+            } else {
+                sb.append(" (no frames received)");
+            }
+        }
+        if (executedAsPlanned()) {
+            sb.append("\n\t\tExecuted as planned.");
+        } else {
+            sb.append("\n\t\tNot executed as planned.");
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+
+    @Override
+    public String toCompactString() {
+        StringBuilder sb = new StringBuilder(super.toCompactString());
+        sb.append(" (");
+        if ((expectedQuicPackets != null)) {
+            for (QuicPacket packet : expectedQuicPackets) {
+                sb.append(packet.toCompactString());
+                sb.append(", ");
+            }
+        }
+        if (expectedQuicFrames != null) {
+            for (QuicFrame frame : expectedQuicFrames) {
+                sb.append(frame.toCompactString());
+                sb.append(", ");
+            }
+        }
+        if (expectedQuicPackets == null || expectedQuicFrames == null) {
+            sb.append(" (no messages set)");
+        }
+        return sb.toString();
+    }
+
+    private boolean matchByClassCount(List<?> expected, List<?> received) {
+        Map<Class<?>, Integer> expectedCount = new HashMap<>();
+        Map<Class<?>, Integer> receivedCount = new HashMap<>();
+        for (Object obj : expected) {
+            if (obj != null) {
+                expectedCount.merge(obj.getClass(), 1, Integer::sum);
+            }
+        }
+        for (Object obj : received) {
+            if (obj != null) {
+                receivedCount.merge(obj.getClass(), 1, Integer::sum);
+            }
+        }
+        for (Map.Entry<Class<?>, Integer> entry : expectedCount.entrySet()) {
+            if (receivedCount.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean executedAsPlanned() {
+        if (expectedQuicPackets != null && !expectedQuicPackets.isEmpty()) {
+            if (getReceivedQuicPackets() == null || getReceivedQuicPackets().isEmpty()) {
+                return false;
+            }
+            if (!matchByClassCount(expectedQuicPackets, getReceivedQuicPackets())) return false;
+        }
+
+        if (expectedQuicFrames != null && !expectedQuicFrames.isEmpty()) {
+            if (getReceivedQuicFrames() == null || getReceivedQuicFrames().isEmpty()) {
+                return false;
+            }
+            if (!matchByClassCount(expectedQuicFrames, getReceivedQuicFrames())) return false;
+        }
+
+        return true;
+    }
+}

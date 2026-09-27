@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workflowTrace>
+    <Send>
+        <configuredSSL2Messages>
+            <SSL2ClientHello/>
+        </configuredSSL2Messages>
+        <configuredRecords>
+            <record/>
+        </configuredRecords>
+    </Send>
+    <Receive>
+        <expectedRecords>
+            <record/>
+        </expectedRecords>
+        <expectedSSL2Messages>
+            <SSL2ServerHello/>
+        </expectedSSL2Messages>
+    </Receive>
+</workflowTrace>
+
