@@ -1,0 +1,56 @@
+# Given this config:
+<config>
+    <defaultRunningMode>CLIENT</defaultRunningMode>
+    <defaultClientConnection>
+        <alias>client</alias>
+        <port>443</port>
+        <hostname>localhost</hostname>
+        <timeout>1000</timeout>
+        <transportHandlerType>TCP</transportHandlerType>
+    </defaultClientConnection>
+    <defaultServerConnection>
+        <alias>server</alias>
+        <port>443</port>
+        <hostname>localhost</hostname>
+        <timeout>1000</timeout>
+        <transportHandlerType>TCP</transportHandlerType>
+    </defaultServerConnection>
+</config>
+
+# And this input trace
+<workflowTrace>
+    <Send>
+        <configuredMessages>
+            <ClientHello/>
+        </configuredMessages>
+    </Send>
+</workflowTrace>
+
+# We expect this normalized trace
+<workflowTrace>
+    <OutboundConnection>
+        <alias>client</alias>
+        <ip>localhost</ip>
+        <port>443</port>
+        <hostname>localhost</hostname>
+        <timeout>1000</timeout>
+        <connectionTimeout>8000</connectionTimeout>
+        <transportHandlerType>TCP</transportHandlerType>
+        <useIpv6>false</useIpv6>
+    </OutboundConnection>
+    <Send>
+        <connectionAlias>client</connectionAlias>
+        <configuredMessages>
+            <ClientHello/>
+        </configuredMessages>
+    </Send>
+</workflowTrace>
+
+# And this after default filter application:
+<workflowTrace>
+    <Send>
+        <configuredMessages>
+            <ClientHello/>
+        </configuredMessages>
+    </Send>
+</workflowTrace>

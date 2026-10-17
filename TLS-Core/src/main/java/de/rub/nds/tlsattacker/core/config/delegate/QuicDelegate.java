@@ -1,0 +1,104 @@
+/*
+ * TLS-Attacker - A Modular Penetration Testing Framework for TLS
+ *
+ * Copyright 2014-2023 Ruhr University Bochum, Paderborn University, Technology Innovation Institute, and Hackmanit GmbH
+ *
+ * Licensed under Apache License, Version 2.0
+ * http://www.apache.org/licenses/LICENSE-2.0.txt
+ */
+package de.rub.nds.tlsattacker.core.config.delegate;
+
+import com.beust.jcommander.Parameter;
+import de.rub.nds.protocol.exception.ConfigurationException;
+import de.rub.nds.tlsattacker.core.config.Config;
+import de.rub.nds.tlsattacker.core.constants.*;
+import de.rub.nds.tlsattacker.core.layer.constant.StackConfiguration;
+import de.rub.nds.tlsattacker.core.protocol.message.extension.quic.QuicTransportParameters;
+import de.rub.nds.tlsattacker.core.workflow.action.executor.WorkflowExecutorType;
+import de.rub.nds.tlsattacker.transport.TransportHandlerType;
+import java.util.ArrayList;
+import java.util.List;
+
+public class QuicDelegate extends Delegate {
+    @Parameter(names = "-quic", description = "Scan the QUIC protocol.")
+    private boolean quic = false;
+
+    public QuicDelegate() {}
+
+    public QuicDelegate(boolean isQuic) {
+        this.quic = isQuic;
+    }
+
+    public boolean isQuic() {
+        return quic;
+    }
+
+    public void setQuic(boolean quic) {
+        this.quic = quic;
+    }
+
+    @Override
+    public void applyDelegate(Config config) throws ConfigurationException {
+        if (quic) {
+            config.setQuic(true);
+
+            // Connection
+            config.getDefaultClientConnection().setTimeout(5000);
+            config.getDefaultClientConnection().setTransportHandlerType(TransportHandlerType.UDP);
+            config.getDefaultServerConnection().setTransportHandlerType(TransportHandlerType.UDP);
+
+            config.setDefaultLayerConfiguration(StackConfiguration.QUIC);
+            config.setWorkflowExecutorType(WorkflowExecutorType.QUIC);
+            config.setFinishWithCloseNotify(true);
+            config.setExpectHandshakeDoneQuicFrame(true);
+            config.setQuicRetryFlowRequired(false);
+
+            // Protocol Version
+            config.setHighestProtocolVersion(ProtocolVersion.TLS13);
+            config.setDefaultSelectedProtocolVersion(ProtocolVersion.TLS13);
+            config.setSupportedVersions(ProtocolVersion.TLS13);
+            config.setDefaultLastRecordProtocolVersion(ProtocolVersion.TLS13);
+            config.setTls13BackwardsCompatibilityMode(false);
+
+            // Cipher Suites, Named Groups, and Signature Algorithms
+            config.setDefaultClientSupportedCipherSuites(CipherSuite.getTls13CipherSuites());
+            config.setDefaultClientNamedGroups(NamedGroup.SECP256R1);
+            config.setDefaultServerNamedGroups(NamedGroup.SECP256R1);
+            config.setDefaultSelectedNamedGroup(NamedGroup.SECP256R1);
+            config.setDefaultClientKeyShareNamedGroups(NamedGroup.SECP256R1);
+            config.setDefaultClientSupportedSignatureAndHashAlgorithms(
+                    SignatureAndHashAlgorithm.getImplementedTls13SignatureAndHashAlgorithms());
+            config.setDefaultServerSupportedCertificateSignAlgorithms(
+                    SignatureAndHashAlgorithm.getImplementedTls13SignatureAndHashAlgorithms());
+
+            // Extensions
+            config.setAddServerNameIndicationExtension(true);
+            config.setSniType(SniType.HOST_NAME);
+            config.setAddECPointFormatExtension(false);
+            config.setAddSupportedVersionsExtension(true);
+            config.setAddEllipticCurveExtension(true);
+            config.setAddSignatureAndHashAlgorithmsExtension(true);
+            config.setAddKeyShareExtension(true);
+            config.setAddPSKKeyExchangeModesExtension(true);
+            config.setAddRenegotiationInfoExtension(false);
+            config.setAddAlpnExtension(true);
+            config.setQuicTransportParametersExtension(true);
+
+            // ALPN
+            List<String> alpnEntries = new ArrayList<>();
+            alpnEntries.add(AlpnProtocol.HTTP3.getConstant());
+            alpnEntries.add("h3-27");
+            alpnEntries.add("h3-28");
+            alpnEntries.add("h3-29");
+            alpnEntries.add("hq-29");
+            alpnEntries.add("echo");
+            alpnEntries.add("hq-interop");
+            alpnEntries.add("ossltest");
+            config.setDefaultProposedAlpnProtocols(alpnEntries);
+
+            // QUIC Transport Parameters
+            QuicTransportParameters parameters = QuicTransportParameters.getDefaultParameters();
+            config.setDefaultQuicTransportParameters(parameters);
+        }
+    }
+}
